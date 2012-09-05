@@ -1,0 +1,20 @@
+div {
+}
+
+#table {
+	width: 288px;
+}
+
+#table div {
+	border: solid 1px black;
+	float:left;
+	width: 30px;
+	height: 30px;
+}
+
+#table div.break {
+	border: none;
+	clear: both;
+	width: auto;
+	height: auto;
+}
