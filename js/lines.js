@@ -3,6 +3,7 @@ var game = {
 	totalFields: 81,
 	fieldsPerTurn: 3,
 	totalColors: 7,
+	minLineLength: 5,
 	occupiedFields: new Array(),
 	occupiedFieldsCount: 0,
 	nextColors: new Array(3),
@@ -39,7 +40,7 @@ var game = {
 					if (cnt >= rnd) {
 						var ball = {x: i, y: j, color: this.getColor()};
 						this.occupiedFieldsCount ++;
-						this.occupiedFields[i][j] = ball;
+						this.occupiedFields[i][j] = ball.color;
 						return ball;
 					}
 					cnt ++;
@@ -59,8 +60,9 @@ var game = {
 	},
 	setSource: function(i, j) {
 		var res = false;
-		if (i >= 0 && i < this.sideSize && j >= 0 && j < this.sideSize && this.occupiedFields[i][j] !== null) {
-			this.source = this.occupiedFields[i][j];
+		var ball = this.getBall(i, j);
+		if (ball) {
+			this.source = ball;
 			res = true;
 		}
 		return res;
@@ -73,8 +75,8 @@ var game = {
 	},
 	getBall: function(i, j) {
 		var res = null;
-		if (i >= 0 && i < this.sideSize && j >= 0 && j < this.sideSize) {
-			res = this.occupiedFields[i][j];
+		if (i >= 0 && i < this.sideSize && j >= 0 && j < this.sideSize && this.occupiedFields[i][j] !== null) {
+			res = {x: i, y: j, color: this.occupiedFields[i][j]};
 		}
 		return res;
 	},
@@ -82,15 +84,44 @@ var game = {
 		var res = false;
 		if (i >= 0 && i < this.sideSize && j >= 0 && j < this.sideSize) {
 			if (this.source) {
-				if (this.source !== i && this.source !== j) {
-					if (!this.occupiedFields[i][j]) {
-						this.occupiedFields[i][j] = this.source;
+				if (this.source.x !== i || this.source.y !== j) {
+					if (this.occupiedFields[i][j] === null) {
+						this.occupiedFields[i][j] = this.source.color;
 						this.occupiedFields[this.source.x][this.source.y] = null;
 						this.resetSource();
 						res = true;
 					}
 				}
 			}
+		}
+		return res;
+	},
+	getLine: function(target) {
+		// TODO: Check all possible lines
+		res = this.getLineHorizontal(target);
+		return res;
+	},
+	getLineHorizontal: function(target) {
+		var firstLeft = this.getBall(target.x, target.y);
+		var i = target.y;
+		while (i > 0) {
+			var testBall = this.getBall(target.x, i - 1);
+			if (testBall && testBall.color === firstLeft.color) {
+				firstLeft = testBall;
+			} else {
+				break;
+			}
+			i --;
+		}
+		var res = {cnt: 1, fields: [firstLeft]};
+		i = firstLeft.y + 1;
+		while (this.getBall(target.x, i) && this.getBall(target.x, i).color === firstLeft.color) {
+			res.cnt ++;
+			res.fields[res.fields.length] = this.getBall(target.x, i);
+			i ++;
+		}
+		if (res.cnt < this.minLineLength) {
+			res = null;
 		}
 		return res;
 	}
@@ -113,14 +144,16 @@ var ui = {
 			$('#field_' + newFields[i].x + '_' + newFields[i].y).removeClass().addClass('color' + newFields[i].color);
 			$('#debug').html($('#debug').html() + '<p>' + i + ': ' + '#' + newFields[i].x + '_' + newFields[i].y + '</p>');
 		}
+		// TODO: for each new ball it should be checked if line is filled, after all new balls are placed
 	},
 	fieldClicked: function(event) {
 		var field = $(this);
 		var idArr = field.attr('id').split('_');
 		var x = parseInt(idArr[1], 10);
 		var y = parseInt(idArr[2], 10);
-		if (game.getSource()) {
-			var source = game.getSource();
+		var source = game.getSource();
+		var target = {x: x, y: y};
+		if (source) {
 			if (source.x === x && source.y === y) {
 				/* target same as source: reset source */
 				field.removeClass().addClass('color' + source.color); // X2
@@ -134,10 +167,17 @@ var ui = {
 				field.removeClass().addClass('color' + ball.color + 's'); // X2.2
 			} else if (game.move(x, y)) {
 				/* target valid: move source to target, reset source, check line */
-				$('#field_' + source.x + '_' + source.y).removeClass();
+				ui.resetField(source);
 				field.removeClass().addClass('color' + source.color); // X2 /2 - this line already appeared 2 times
 				// TODO: Ball moving along the shortest path animation
-				ui.fillIn(game.fill());
+				var line = game.getLine(target);
+				if (line) {
+					for (var i = 0; i < line.fields.length; i++) {
+						ui.resetField(line.fields[i]);
+					}
+				} else {
+					ui.fillIn(game.fill());
+				}
 			} else {
 				/* target unavailable: display message */
 				$('#message').html('<p>Target unavailable.</p>');
@@ -148,6 +188,9 @@ var ui = {
 			var ball = game.getBall(x, y); // X2.2
 			field.removeClass().addClass('color' + ball.color + 's'); // X2.2
 		}
+	},
+	resetField: function(target) {
+		$('#field_' + target.x + '_' + target.y).removeClass();
 	},
 	init: function() {
 		this.createTable();
