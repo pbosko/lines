@@ -4,6 +4,7 @@ var game = {
 	fieldsPerTurn: 3,
 	totalColors: 7,
 	minLineLength: 5,
+	score: 0,
 	occupiedFields: new Array(),
 	occupiedFieldsCount: 0,
 	nextColors: new Array(3),
@@ -18,6 +19,7 @@ var game = {
 		this.nextColors[0] = this.getRandomColor();
 		this.nextColors[1] = this.getRandomColor();
 		this.nextColors[2] = this.getRandomColor();
+		this.score = 0;
 		return this.fill();
 	},
 	getRandomColor: function() {
@@ -96,26 +98,60 @@ var game = {
 		}
 		return res;
 	},
+	mergeLines: function(a, b) {
+		var res = null;
+		if (a && b) {
+			res = a;
+			res.cnt = a.cnt + b.cnt - 1;
+			var found;
+			for (var i = 0; i < b.fields.length; i ++) {
+				found = false;
+				for (var j = 0; j < a.fields.length; j ++) {
+					if (b.fields[i].x === a.fields[j].x && b.fields[i].y === a.fields[j].y) {
+						found = true;
+						break;
+					}
+				}
+				if (!found) {
+					res.fields[res.fields.length] = b.fields[i];
+				}
+			}
+		} else {
+			res = a || b;
+		}
+		return res;
+	},
 	getLine: function(target) {
 		// TODO: Check all possible lines
-		res = this.getLineHorizontal(target);
+		var horizontal = this.getLineHorizontal(target);
+		var vertical = this.getLineVertical(target);
+		var fwdDiagonal = this.getLineSlash(target);
+		var bckDiagonal = this.getLineBackslash(target);
+		var res = this.mergeLines(horizontal, vertical);
+		res = this.mergeLines(res, fwdDiagonal);
+		res = this.mergeLines(res, bckDiagonal);
+		if (res && res.fields) {
+			this.score += res.fields.length;
+			this.clearFields(res.fields);
+			this.occupiedFieldsCount -= res.fields.length;
+		}
 		return res;
 	},
 	getLineHorizontal: function(target) {
-		var firstLeft = this.getBall(target.x, target.y);
+		var first = this.getBall(target.x, target.y);
 		var i = target.y;
 		while (i > 0) {
 			var testBall = this.getBall(target.x, i - 1);
-			if (testBall && testBall.color === firstLeft.color) {
-				firstLeft = testBall;
+			if (testBall && testBall.color === first.color) {
+				first = testBall;
 			} else {
 				break;
 			}
 			i --;
 		}
-		var res = {cnt: 1, fields: [firstLeft]};
-		i = firstLeft.y + 1;
-		while (this.getBall(target.x, i) && this.getBall(target.x, i).color === firstLeft.color) {
+		var res = {cnt: 1, fields: [first]};
+		i = first.y + 1;
+		while (this.getBall(target.x, i) && this.getBall(target.x, i).color === first.color) {
 			res.cnt ++;
 			res.fields[res.fields.length] = this.getBall(target.x, i);
 			i ++;
@@ -124,6 +160,94 @@ var game = {
 			res = null;
 		}
 		return res;
+	},
+	getLineVertical: function(target) {
+		var first = this.getBall(target.x, target.y);
+		var i = target.x;
+		while (i > 0) {
+			var testBall = this.getBall(i - 1, target.y);
+			if (testBall && testBall.color === first.color) {
+				first = testBall;
+			} else {
+				break;
+			}
+			i --;
+		}
+		var res = {cnt: 1, fields: [first]};
+		i = first.x + 1;
+		while (this.getBall(i, target.y) && this.getBall(i, target.y).color === first.color) {
+			res.cnt ++;
+			res.fields[res.fields.length] = this.getBall(i, target.y);
+			i ++;
+		}
+		if (res.cnt < this.minLineLength) {
+			res = null;
+		}
+		return res;
+	},
+	getLineSlash: function(target) {
+		var first = this.getBall(target.x, target.y);
+		var i = target.x;
+		var j = target.y;
+		while (i < this.sideSize - 1 && j > 0) {
+			var testBall = this.getBall(i + 1, j - 1);
+			if (testBall && testBall.color === first.color) {
+				first = testBall;
+			} else {
+				break;
+			}
+			i ++;
+			j --;
+		}
+		var res = {cnt: 1, fields: [first]};
+		i = first.x - 1;
+		j = first.y + 1;
+		while (this.getBall(i, j) && this.getBall(i, j).color === first.color) {
+			res.cnt ++;
+			res.fields[res.fields.length] = this.getBall(i, j);
+			i --;
+			j ++;
+		}
+		if (res.cnt < this.minLineLength) {
+			res = null;
+		}
+		return res;
+	},
+	getLineBackslash: function(target) {
+		var first = this.getBall(target.x, target.y);
+		var i = target.x;
+		var j = target.y;
+		while (i > 0 && j > 0) {
+			var testBall = this.getBall(i - 1, j - 1);
+			if (testBall && testBall.color === first.color) {
+				first = testBall;
+			} else {
+				break;
+			}
+			i --;
+			j --;
+		}
+		var res = {cnt: 1, fields: [first]};
+		i = first.x + 1;
+		j = first.y + 1;
+		while (this.getBall(i, j) && this.getBall(i, j).color === first.color) {
+			res.cnt ++;
+			res.fields[res.fields.length] = this.getBall(i, j);
+			i ++;
+			j ++;
+		}
+		if (res.cnt < this.minLineLength) {
+			res = null;
+		}
+		return res;
+	},
+	clearFields: function(fields) {
+		for (var i = 0; i < fields.length; i ++) {
+			this.occupiedFields[fields[i].x][fields[i].y] = null;
+		}
+	},
+	getScore: function() {
+		return this.score * 2;
 	}
 };
 
@@ -139,10 +263,8 @@ var ui = {
 		}
 	},
 	fillIn: function(newFields) {
-		$('#debug').html('');
 		for (var i = 0; i < newFields.length; i ++) {
 			$('#field_' + newFields[i].x + '_' + newFields[i].y).removeClass().addClass('color' + newFields[i].color);
-			$('#debug').html($('#debug').html() + '<p>' + i + ': ' + '#' + newFields[i].x + '_' + newFields[i].y + '</p>');
 		}
 		// TODO: for each new ball it should be checked if line is filled, after all new balls are placed
 	},
@@ -175,6 +297,7 @@ var ui = {
 					for (var i = 0; i < line.fields.length; i++) {
 						ui.resetField(line.fields[i]);
 					}
+					$('#score span').html(game.getScore());
 				} else {
 					ui.fillIn(game.fill());
 				}
