@@ -64,9 +64,9 @@ var game = {
 		}
 		return newFields;
 	},
-	setSource: function(i, j) {
+	setSource: function(newSource) {
 		var res = false;
-		var ball = this.getBall(i, j);
+		var ball = this.getBall(newSource.x, newSource.y);
 		if (ball) {
 			this.source = ball;
 			res = true;
@@ -342,103 +342,3 @@ var game = {
 		}
 	}
 };
-
-var ui = {
-	animation: null,
-	disabled: false,
-	path: [],
-	prev: null,
-	source: null,
-	target: null,
-	createTable: function() {
-		var table = $('#table');
-		for (var i = 0; i < game.sideSize; i ++) {
-			for (var j = 0; j < game.sideSize; j ++) {
-				$('<div id="field_' + i + '_' + j + '"></div>').appendTo(table);
-				$('#field_' + i + '_' + j).click(this.fieldClicked);
-			}
-		}
-	},
-	fillIn: function(newFields) {
-		for (var i = 0; i < newFields.length; i ++) {
-			$('#field_' + newFields[i].x + '_' + newFields[i].y).removeClass().addClass('color' + newFields[i].color);
-		}
-		// TODO: for each new ball it should be checked if line is filled, after all new balls are placed
-	},
-	fieldClicked: function(event) {
-		if (ui.disabled || game.occupiedFieldsCount === game.totalFields) {
-			return;
-		}
-		var i;
-		var field = $(this);
-		var idArr = field.attr('id').split('_');
-		var x = parseInt(idArr[1], 10);
-		var y = parseInt(idArr[2], 10);
-		ui.source = game.getSource();
-		ui.target = {x: x, y: y};
-		if (ui.source) {
-			if (ui.source.x === x && ui.source.y === y) {
-				/* target same as ui.source: reset ui.source */
-				field.removeClass().addClass('color' + ui.source.color); // X2
-				game.resetSource(); // X2
-			} else if (game.getBall(x, y)) {
-				/* target occupied: target becomes new ui.source */
-				$('#field_' + ui.source.x + '_' + ui.source.y).removeClass().addClass('color' + ui.source.color); // X2
-				game.resetSource(); // X2
-				game.setSource(x, y); // X2.2
-				var ball = game.getBall(x, y); // X2.2
-				field.removeClass().addClass('color' + ball.color + 's'); // X2.2
-			} else if (game.move(x, y)) {
-				/* target valid: move ui.source to target, reset ui.source, check line */
-				// ui.resetField(ui.source);
-				// TODO: Ball moving along the shortest path animation
-				ui.path = game.getPath();
-				ui.disabled = true;
-				ui.prev = ui.source;
-				ui.animation = setInterval(function() { ui.animate(); }, 50);
-			} else {
-				/* target unavailable: display message */
-				$('#message').html('<p>Target unavailable.</p>');
-			}
-		} else if (game.getBall(x, y)) {
-			/* set new source */
-			game.setSource(x, y); // X2.2
-			var ball = game.getBall(x, y); // X2.2
-			field.removeClass().addClass('color' + ball.color + 's'); // X2.2
-		}
-	},
-	animate: function() {
-		if (this.path.length > 0) {
-			this.resetField(this.prev);
-			var ball = this.path.shift();
-			this.prev = ball;
-			this.setField(ball);
-		} else {
-			clearInterval(this.animation);
-			this.setField(this.target);
-			var line = game.getLine(this.target);
-			if (line) {
-				for (var i = 0; i < line.fields.length; i++) {
-					ui.resetField(line.fields[i]);
-				}
-				$('#score span').html(game.getScore());
-			} else {
-				ui.fillIn(game.fill());
-			}
-			this.disabled = false;
-		}
-	},
-	setField: function(target) {
-		$('#field_' + target.x + '_' + target.y).removeClass().addClass('color' + this.source.color);
-	},
-	resetField: function(target) {
-		$('#field_' + target.x + '_' + target.y).removeClass();
-	},
-	init: function() {
-		this.createTable();
-		var newFields = game.newGame();
-		this.fillIn(newFields);
-	}
-};
-
-ui.init();
