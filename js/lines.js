@@ -7,13 +7,17 @@ var game = {
 	score: 0,
 	occupiedFields: new Array(),
 	occupiedFieldsCount: 0,
-	nextColors: new Array(3),
+	nextColors: new Array(this.fieldsPerTurn),
 	source: null,
+	path: null,
 	newGame: function() {
 		for (var i = 0; i < this.sideSize; i ++) {
-			this.occupiedFields[i] = new Array(10);
+			this.occupiedFields[i] = new Array(this.sideSize);
 			for (var j = 0; j < this.sideSize; j ++) {
-				this.occupiedFields[i][j] = null;
+				this.occupiedFields[i][j] = {
+					color: null,
+					distance: null
+				};
 			}
 		}
 		this.nextColors[0] = this.getRandomColor();
@@ -38,11 +42,11 @@ var game = {
 		var cnt = 0;
 		for (var i = 0; i < this.sideSize; i ++) {
 			for (var j = 0; j < this.sideSize; j ++) {
-				if (this.occupiedFields[i][j] === null) {
+				if (this.occupiedFields[i][j].color === null) {
 					if (cnt >= rnd) {
 						var ball = {x: i, y: j, color: this.getColor()};
 						this.occupiedFieldsCount ++;
-						this.occupiedFields[i][j] = ball.color;
+						this.occupiedFields[i][j].color = ball.color;
 						return ball;
 					}
 					cnt ++;
@@ -77,19 +81,21 @@ var game = {
 	},
 	getBall: function(i, j) {
 		var res = null;
-		if (i >= 0 && i < this.sideSize && j >= 0 && j < this.sideSize && this.occupiedFields[i][j] !== null) {
-			res = {x: i, y: j, color: this.occupiedFields[i][j]};
+		if (i >= 0 && i < this.sideSize && j >= 0 && j < this.sideSize && this.occupiedFields[i][j].color !== null) {
+			res = {x: i, y: j, color: this.occupiedFields[i][j].color};
 		}
 		return res;
 	},
 	move: function(i, j) {
+		var target = {x: i, y: j};
 		var res = false;
-		if (i >= 0 && i < this.sideSize && j >= 0 && j < this.sideSize) {
+		if (target.x >= 0 && target.x < this.sideSize && target.y >= 0 && target.y < this.sideSize) {
 			if (this.source) {
-				if (this.source.x !== i || this.source.y !== j) {
-					if (this.occupiedFields[i][j] === null) {
-						this.occupiedFields[i][j] = this.source.color;
-						this.occupiedFields[this.source.x][this.source.y] = null;
+				if (this.source.x !== target.x || this.source.y !== target.y) {
+					this.path = this.dijkstra.shortestPath(this, this.source, target);
+					if (this.path.length > 0) {
+						this.occupiedFields[target.x][target.y].color = this.source.color;
+						this.occupiedFields[this.source.x][this.source.y].color = null;
 						this.resetSource();
 						res = true;
 					}
@@ -122,7 +128,6 @@ var game = {
 		return res;
 	},
 	getLine: function(target) {
-		// TODO: Check all possible lines
 		var horizontal = this.getLineHorizontal(target);
 		var vertical = this.getLineVertical(target);
 		var fwdDiagonal = this.getLineSlash(target);
@@ -243,20 +248,112 @@ var game = {
 	},
 	clearFields: function(fields) {
 		for (var i = 0; i < fields.length; i ++) {
-			this.occupiedFields[fields[i].x][fields[i].y] = null;
+			this.occupiedFields[fields[i].x][fields[i].y].color = null;
 		}
 	},
 	getScore: function() {
 		return this.score * 2;
+	},
+	getPath: function() {
+		return this.path;
+	},
+	dijkstra: {
+		fieldDistance: 1,
+		game: null,
+		initialize: function(source) {
+			for (var i = 0; i < this.game.sideSize; i ++) {
+				for (var j = 0; j < this.game.sideSize; j ++) {
+					this.game.occupiedFields[i][j].distance = null;
+					this.game.occupiedFields[i][j].previous = null;
+					if (this.game.occupiedFields[i][j].color === null) {
+						this.game.occupiedFields[i][j].visited = false;
+					} else {
+						this.game.occupiedFields[i][j].visited = true;
+					}
+					if (source.x === i && source.y == j) {
+						this.game.occupiedFields[i][j].distance = 0;
+						this.game.occupiedFields[i][j].visited = true;
+					}
+				}
+			}
+		},
+		relax: function(prev, next, distance) {
+			if (this.game.occupiedFields[next.x][next.y].distance === null || this.game.occupiedFields[next.x][next.y].distance > this.game.occupiedFields[prev.x][prev.y].distance + distance) {
+				this.game.occupiedFields[next.x][next.y].distance = this.game.occupiedFields[prev.x][prev.y].distance + distance;
+				this.game.occupiedFields[next.x][next.y].previous = {x: prev.x, y: prev.y};
+			}
+			return this.game.occupiedFields[next.x][next.y].distance;
+		},
+		compare: function(a, b) {
+			var priority1 = this.game.occupiedFields[a.x][a.y].distance;
+			var priority2 = this.game.occupiedFields[b.x][b.y].distance;
+			if (priority1 === priority2) {
+				return 0;
+			}
+			if (priority1 === null) {
+				return -1;
+			}
+			if (priority2 === null) {
+				return 1;
+			}
+			return priority1 - priority2;
+		},
+		getAdjecent: function(source) {
+			var res = [];
+			if (source.x > 0 && !this.game.occupiedFields[source.x - 1][source.y].visited) {
+				res.push({x: source.x - 1, y: source.y});
+			}
+			if (source.x < this.game.sideSize - 1 && !this.game.occupiedFields[source.x + 1][source.y].visited) {
+				res.push({x: source.x + 1, y: source.y});
+			}
+			if (source.y > 0 && !this.game.occupiedFields[source.x][source.y - 1].visited) {
+				res.push({x: source.x, y: source.y - 1});
+			}
+			if (source.y < this.game.sideSize - 1 && !this.game.occupiedFields[source.x][source.y + 1].visited) {
+				res.push({x: source.x, y: source.y + 1});
+			}
+			return res;
+		},
+		shortestPath: function(game, source, target) {
+			this.game = game;
+			var q, u, adjecent, i, prevDistance, path = [];
+			this.initialize(source);
+			q = [source];
+			while (q.length > 0) {
+				u = q.shift();
+				if (u.x === target.x && u.y === target.y) {
+					break;
+				}
+				adjecent = this.getAdjecent(u);
+				for (i = 0; i < adjecent.length; i ++) {
+					if (game.occupiedFields[adjecent[i].x][adjecent[i].y].distance === null) {
+						q.push(adjecent[i]);
+					}
+					this.relax(u, adjecent[i], this.fieldDistance);
+				}
+				q.sort(this.compare);
+				game.occupiedFields[u.x][u.y].visited = true;
+			}
+			while (game.occupiedFields[target.x][target.y].distance > 0) {
+				path.unshift(target);
+				target = game.occupiedFields[target.x][target.y].previous;
+			}
+			return path;
+		}
 	}
 };
 
 var ui = {
-	sideSize: 9,
+	animation: null,
+	disabled: false,
+	path: [],
+	prev: null,
+	source: null,
+	target: null,
 	createTable: function() {
 		var table = $('#table');
-		for (var i = 0; i < this.sideSize; i ++) {
-			for (var j = 0; j < this.sideSize; j ++) {
+		for (var i = 0; i < game.sideSize; i ++) {
+			for (var j = 0; j < game.sideSize; j ++) {
 				$('<div id="field_' + i + '_' + j + '"></div>').appendTo(table);
 				$('#field_' + i + '_' + j).click(this.fieldClicked);
 			}
@@ -269,38 +366,36 @@ var ui = {
 		// TODO: for each new ball it should be checked if line is filled, after all new balls are placed
 	},
 	fieldClicked: function(event) {
+		if (ui.disabled || game.occupiedFieldsCount === game.totalFields) {
+			return;
+		}
+		var i;
 		var field = $(this);
 		var idArr = field.attr('id').split('_');
 		var x = parseInt(idArr[1], 10);
 		var y = parseInt(idArr[2], 10);
-		var source = game.getSource();
-		var target = {x: x, y: y};
-		if (source) {
-			if (source.x === x && source.y === y) {
-				/* target same as source: reset source */
-				field.removeClass().addClass('color' + source.color); // X2
+		ui.source = game.getSource();
+		ui.target = {x: x, y: y};
+		if (ui.source) {
+			if (ui.source.x === x && ui.source.y === y) {
+				/* target same as ui.source: reset ui.source */
+				field.removeClass().addClass('color' + ui.source.color); // X2
 				game.resetSource(); // X2
 			} else if (game.getBall(x, y)) {
-				/* target occupied: target becomes new source */
-				$('#field_' + source.x + '_' + source.y).removeClass().addClass('color' + source.color); // X2
+				/* target occupied: target becomes new ui.source */
+				$('#field_' + ui.source.x + '_' + ui.source.y).removeClass().addClass('color' + ui.source.color); // X2
 				game.resetSource(); // X2
 				game.setSource(x, y); // X2.2
 				var ball = game.getBall(x, y); // X2.2
 				field.removeClass().addClass('color' + ball.color + 's'); // X2.2
 			} else if (game.move(x, y)) {
-				/* target valid: move source to target, reset source, check line */
-				ui.resetField(source);
-				field.removeClass().addClass('color' + source.color); // X2 /2 - this line already appeared 2 times
+				/* target valid: move ui.source to target, reset ui.source, check line */
+				// ui.resetField(ui.source);
 				// TODO: Ball moving along the shortest path animation
-				var line = game.getLine(target);
-				if (line) {
-					for (var i = 0; i < line.fields.length; i++) {
-						ui.resetField(line.fields[i]);
-					}
-					$('#score span').html(game.getScore());
-				} else {
-					ui.fillIn(game.fill());
-				}
+				ui.path = game.getPath();
+				ui.disabled = true;
+				ui.prev = ui.source;
+				ui.animation = setInterval(function() { ui.animate(); }, 50);
 			} else {
 				/* target unavailable: display message */
 				$('#message').html('<p>Target unavailable.</p>');
@@ -311,6 +406,30 @@ var ui = {
 			var ball = game.getBall(x, y); // X2.2
 			field.removeClass().addClass('color' + ball.color + 's'); // X2.2
 		}
+	},
+	animate: function() {
+		if (this.path.length > 0) {
+			this.resetField(this.prev);
+			var ball = this.path.shift();
+			this.prev = ball;
+			this.setField(ball);
+		} else {
+			clearInterval(this.animation);
+			this.setField(this.target);
+			var line = game.getLine(this.target);
+			if (line) {
+				for (var i = 0; i < line.fields.length; i++) {
+					ui.resetField(line.fields[i]);
+				}
+				$('#score span').html(game.getScore());
+			} else {
+				ui.fillIn(game.fill());
+			}
+			this.disabled = false;
+		}
+	},
+	setField: function(target) {
+		$('#field_' + target.x + '_' + target.y).removeClass().addClass('color' + this.source.color);
 	},
 	resetField: function(target) {
 		$('#field_' + target.x + '_' + target.y).removeClass();
