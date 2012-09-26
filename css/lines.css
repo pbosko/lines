@@ -1,22 +1,41 @@
-div {
+#forecast_box {
+	width: 378px;
+}
+
+#forecast {
+	width: 126px;
+	height: 40px;
+	margin-bottom: 15px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+#forecast div {
+	float:left;
+	width: 40px;
+	height: 40px;
+}
+
+#score_board {
+	width: 378px;
+	margin-bottom: 10px;
+}
+
+#score_board div {
+	width: 80px;
+	margin-left: auto;
+	margin-right: auto;
 }
 
 #table {
 	width: 378px;
 }
 
-#table div {
+#table div, #forecast div {
 	border: solid 1px black;
 	float:left;
 	width: 40px;
 	height: 40px;
-}
-
-#table div.break {
-	border: none;
-	clear: both;
-	width: auto;
-	height: auto;
 }
 
 .color0 {

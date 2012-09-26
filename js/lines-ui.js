@@ -24,31 +24,33 @@ var ui = {
 				this.clearLine(line);
 			}
 		}
+		if (game.isGameOver()) {
+			var record = localStorage.getItem('record') && parseInt(localStorage.getItem('record')) || 0;
+			if (game.getScore() > record) {
+				localStorage.setItem('record', game.getScore());
+				this.displayRecord();
+			}
+		}
+		var nextColors = game.getNextColors();
+		for (i = 0; i < nextColors.length; i ++) {
+			$('#forecast_' + i).removeClass().addClass('color' + nextColors[i]);
+		}
 	},
 	fieldClicked: function(event) {
 		if (ui.disabled || game.occupiedFieldsCount === game.totalFields) {
 			return;
 		}
-		var i;
-		var field = $(this);
-		var idArr = field.attr('id').split('_');
-		var x = parseInt(idArr[1], 10);
-		var y = parseInt(idArr[2], 10);
+		var idArr = $(this).attr('id').split('_');
 		ui.source = game.getSource();
-		ui.target = {x: x, y: y};
+		ui.target = {x: parseInt(idArr[1], 10), y: parseInt(idArr[2], 10)};
 		if (ui.source) {
 			if (ui.source.x === ui.target.x && ui.source.y === ui.target.y) {
-				/* target same as ui.source: reset ui.source */
-				field.removeClass().addClass('color' + ui.source.color); // X2
-				game.resetSource(); // X2
-			} else if (game.getBall(ui.target.x, ui.target.y)) {
+				ui.unmarkField(ui.source);
+			} else if (game.getBall(ui.target)) {
 				/* target occupied: target becomes new ui.source */
-				$('#field_' + ui.source.x + '_' + ui.source.y).removeClass().addClass('color' + ui.source.color); // X2
-				game.resetSource(); // X2
-				game.setSource(ui.target); // X2.2
-				var ball = game.getBall(ui.target.x, ui.target.y); // X2.2
-				field.removeClass().addClass('color' + ball.color + 's'); // X2.2
-			} else if (game.move(x, y)) {
+				ui.unmarkField(ui.source);
+				ui.markField(ui.target);
+			} else if (game.move(ui.target)) {
 				/* target valid: move ui.source to target, reset ui.source, check line */
 				ui.path = game.getPath();
 				ui.disabled = true;
@@ -58,11 +60,9 @@ var ui = {
 				/* target unavailable: display message */
 				$('#message').html('<p>Target unavailable.</p>');
 			}
-		} else if (game.getBall(ui.target.x, ui.target.y)) {
-			/* set new source */
-			game.setSource(ui.target); // X2.2
-			var ball = game.getBall(ui.target.x, ui.target.y); // X2.2
-			field.removeClass().addClass('color' + ball.color + 's'); // X2.2
+		} else if (game.getBall(ui.target)) {
+			/* sets new source */
+			ui.markField(ui.target);
 		}
 	},
 	animate: function() {
@@ -88,6 +88,18 @@ var ui = {
 		}
 		$('#score span').html(game.getScore());
 	},
+	displayRecord: function() {
+		$('#highscore span').html(localStorage.getItem('record') || 0);
+	},
+	markField: function(target) {
+		game.setSource(target);
+		var ball = game.getBall(target);
+		$('#field_' + target.x + '_' + target.y).removeClass().addClass('color' + ball.color + 's');
+	},
+	unmarkField: function(source) {
+		$('#field_' + source.x + '_' + source.y).removeClass().addClass('color' + source.color);
+		game.resetSource();
+	},
 	setField: function(target) {
 		$('#field_' + target.x + '_' + target.y).removeClass().addClass('color' + this.source.color);
 	},
@@ -95,6 +107,7 @@ var ui = {
 		$('#field_' + target.x + '_' + target.y).removeClass();
 	},
 	init: function() {
+		this.displayRecord();
 		this.createTable();
 		var newFields = game.newGame();
 		this.fillIn(newFields);

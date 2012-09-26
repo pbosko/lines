@@ -26,6 +26,9 @@ var game = {
 		this.score = 0;
 		return this.fill();
 	},
+	isGameOver: function() {
+		return this.occupiedFieldsCount >= this.totalFields;
+	},
 	getRandomColor: function() {
 		var color = Math.floor(Math.random() * this.totalColors);
 		return color;
@@ -36,6 +39,9 @@ var game = {
 		this.nextColors[1] = this.nextColors[2];
 		this.nextColors[2] = this.getRandomColor();
 		return color;
+	},
+	getNextColors: function() {
+		return this.nextColors;
 	},
 	newBall: function() {
 		var rnd = Math.floor(Math.random() * (this.totalFields - this.occupiedFieldsCount));
@@ -66,7 +72,7 @@ var game = {
 	},
 	setSource: function(newSource) {
 		var res = false;
-		var ball = this.getBall(newSource.x, newSource.y);
+		var ball = this.getBall(newSource);
 		if (ball) {
 			this.source = ball;
 			res = true;
@@ -79,15 +85,14 @@ var game = {
 	getSource: function() {
 		return this.source;
 	},
-	getBall: function(i, j) {
+	getBall: function(position) {
 		var res = null;
-		if (i >= 0 && i < this.sideSize && j >= 0 && j < this.sideSize && this.occupiedFields[i][j].color !== null) {
-			res = {x: i, y: j, color: this.occupiedFields[i][j].color};
+		if (position.x >= 0 && position.x < this.sideSize && position.y >= 0 && position.y < this.sideSize && this.occupiedFields[position.x][position.y].color !== null) {
+			res = {x: position.x, y: position.y, color: this.occupiedFields[position.x][position.y].color};
 		}
 		return res;
 	},
-	move: function(i, j) {
-		var target = {x: i, y: j};
+	move: function(target) {
 		var res = false;
 		if (target.x >= 0 && target.x < this.sideSize && target.y >= 0 && target.y < this.sideSize) {
 			if (this.source) {
@@ -143,10 +148,10 @@ var game = {
 		return res;
 	},
 	getLineHorizontal: function(target) {
-		var first = this.getBall(target.x, target.y);
+		var first = this.getBall(target);
 		var i = target.y;
 		while (i > 0) {
-			var testBall = this.getBall(target.x, i - 1);
+			var testBall = this.getBall({x: target.x, y: i - 1});
 			if (testBall && testBall.color === first.color) {
 				first = testBall;
 			} else {
@@ -156,9 +161,9 @@ var game = {
 		}
 		var res = {cnt: 1, fields: [first]};
 		i = first.y + 1;
-		while (this.getBall(target.x, i) && this.getBall(target.x, i).color === first.color) {
+		while (this.getBall({x: target.x, y: i}) && this.getBall({x: target.x, y: i}).color === first.color) {
 			res.cnt ++;
-			res.fields[res.fields.length] = this.getBall(target.x, i);
+			res.fields[res.fields.length] = this.getBall({x: target.x, y: i});
 			i ++;
 		}
 		if (res.cnt < this.minLineLength) {
@@ -167,10 +172,10 @@ var game = {
 		return res;
 	},
 	getLineVertical: function(target) {
-		var first = this.getBall(target.x, target.y);
+		var first = this.getBall(target);
 		var i = target.x;
 		while (i > 0) {
-			var testBall = this.getBall(i - 1, target.y);
+			var testBall = this.getBall({x: i - 1, y: target.y});
 			if (testBall && testBall.color === first.color) {
 				first = testBall;
 			} else {
@@ -180,9 +185,9 @@ var game = {
 		}
 		var res = {cnt: 1, fields: [first]};
 		i = first.x + 1;
-		while (this.getBall(i, target.y) && this.getBall(i, target.y).color === first.color) {
+		while (this.getBall({x: i, y: target.y}) && this.getBall({x: i, y: target.y}).color === first.color) {
 			res.cnt ++;
-			res.fields[res.fields.length] = this.getBall(i, target.y);
+			res.fields[res.fields.length] = this.getBall({x: i, y: target.y});
 			i ++;
 		}
 		if (res.cnt < this.minLineLength) {
@@ -191,11 +196,11 @@ var game = {
 		return res;
 	},
 	getLineSlash: function(target) {
-		var first = this.getBall(target.x, target.y);
+		var first = this.getBall(target);
 		var i = target.x;
 		var j = target.y;
 		while (i < this.sideSize - 1 && j > 0) {
-			var testBall = this.getBall(i + 1, j - 1);
+			var testBall = this.getBall({x: i + 1, y: j - 1});
 			if (testBall && testBall.color === first.color) {
 				first = testBall;
 			} else {
@@ -207,9 +212,9 @@ var game = {
 		var res = {cnt: 1, fields: [first]};
 		i = first.x - 1;
 		j = first.y + 1;
-		while (this.getBall(i, j) && this.getBall(i, j).color === first.color) {
+		while (this.getBall({x: i, y: j}) && this.getBall({x: i, y: j}).color === first.color) {
 			res.cnt ++;
-			res.fields[res.fields.length] = this.getBall(i, j);
+			res.fields[res.fields.length] = this.getBall({x: i, y: j});
 			i --;
 			j ++;
 		}
@@ -219,11 +224,11 @@ var game = {
 		return res;
 	},
 	getLineBackslash: function(target) {
-		var first = this.getBall(target.x, target.y);
+		var first = this.getBall(target);
 		var i = target.x;
 		var j = target.y;
 		while (i > 0 && j > 0) {
-			var testBall = this.getBall(i - 1, j - 1);
+			var testBall = this.getBall({x: i - 1, y: j - 1});
 			if (testBall && testBall.color === first.color) {
 				first = testBall;
 			} else {
@@ -235,9 +240,9 @@ var game = {
 		var res = {cnt: 1, fields: [first]};
 		i = first.x + 1;
 		j = first.y + 1;
-		while (this.getBall(i, j) && this.getBall(i, j).color === first.color) {
+		while (this.getBall({x: i, y: j}) && this.getBall({x: i, y: j}).color === first.color) {
 			res.cnt ++;
-			res.fields[res.fields.length] = this.getBall(i, j);
+			res.fields[res.fields.length] = this.getBall({x: i, y: j});
 			i ++;
 			j ++;
 		}
