@@ -66,57 +66,57 @@ h1 {
 }
 
 .color0 {
-	background-image: url('images/0.jpg');
+	background-image: url('../images/0.jpg');
 }
 
 .color1 {
-	background-image: url('images/1.jpg');
+	background-image: url('../images/1.jpg');
 }
 
 .color2 {
-	background-image: url('images/2.jpg');
+	background-image: url('../images/2.jpg');
 }
 
 .color3 {
-	background-image: url('images/3.jpg');
+	background-image: url('../images/3.jpg');
 }
 
 .color4 {
-	background-image: url('images/4.jpg');
+	background-image: url('../images/4.jpg');
 }
 
 .color5 {
-	background-image: url('images/5.jpg');
+	background-image: url('../images/5.jpg');
 }
 
 .color6 {
-	background-image: url('images/6.jpg');
+	background-image: url('../images/6.jpg');
 }
 
 .color0s {
-	background-image: url('images/0s.jpg');
+	background-image: url('../images/0s.jpg');
 }
 
 .color1s {
-	background-image: url('images/1s.jpg');
+	background-image: url('../images/1s.jpg');
 }
 
 .color2s {
-	background-image: url('images/2s.jpg');
+	background-image: url('../images/2s.jpg');
 }
 
 .color3s {
-	background-image: url('images/3s.jpg');
+	background-image: url('../images/3s.jpg');
 }
 
 .color4s {
-	background-image: url('images/4s.jpg');
+	background-image: url('../images/4s.jpg');
 }
 
 .color5s {
-	background-image: url('images/5s.jpg');
+	background-image: url('../images/5s.jpg');
 }
 
 .color6s {
-	background-image: url('images/6s.jpg');
+	background-image: url('../images/6s.jpg');
 }
